@@ -10,6 +10,8 @@ import 'package:chating/screens/profile_setup_screen.dart';
 import 'package:chating/services/auth_service.dart';
 import 'package:chating/services/user_service.dart';
 import 'package:chating/services/notification_service.dart';
+import 'package:chating/services/permission_service.dart';
+import 'package:chating/screens/permission_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
 import 'package:chating/services/zego_service.dart';
@@ -26,9 +28,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   // Detect if this is a call invitation
   final data = message.data;
-  
+
   // Zego/ZIM often put the sender name in different fields depending on the plugin
-  String? senderName = data['caller_name'] ?? data['sender_name'] ?? data['title'];
+  String? senderName =
+      data['caller_name'] ?? data['sender_name'] ?? data['title'];
 
   bool isCall = data.containsKey('call_id') ||
       data.containsKey('zego') ||
@@ -55,7 +58,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     print('🚀 Starting Firebase initialization...');
     await Firebase.initializeApp(
@@ -69,14 +72,14 @@ void main() async {
 
     // ✅ Initialize NotificationService (FCM token + ZPNs registration)
     print('🚀 Initializing NotificationService...');
-    await NotificationService().init().timeout(const Duration(seconds: 10), onTimeout: () {
+    await NotificationService().init().timeout(const Duration(seconds: 10),
+        onTimeout: () {
       print('⚠️ NotificationService init timed out');
     });
     print('✅ NotificationService ready');
 
-    // We no longer block main() with Zego/Zim init. 
+    // We no longer block main() with Zego/Zim init.
     _initBackgroundServices();
-
   } catch (e) {
     print('❌ Critical Initialization Error: $e');
   }
@@ -88,19 +91,21 @@ void main() async {
 Future<void> _initBackgroundServices() async {
   try {
     print('🚀 Starting background service initialization...');
-    final user = await AuthService().getOrCreateDeviceUser();
+    // Only get the ALREADY LOGGED IN user
+    final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      print('✅ Device user found: ${user.uid}');
-      final profile = await UserService.getUserData(user).timeout(const Duration(seconds: 5));
+      print('✅ Existing user found: ${user.uid}');
+      final profile = await UserService.getUserData(user)
+          .timeout(const Duration(seconds: 5));
       final displayName = profile?['name'] ?? user.displayName ?? 'User';
       print('👤 Display name: $displayName');
-      
+
       print('🚀 Initializing Zego and Zim...');
       await ZegoService().init(userID: user.uid, userName: displayName);
       await ZimService().init(userID: user.uid, userName: displayName);
       print('✅ Zego and Zim initialized');
     } else {
-      print('⚠️ No device user found yet');
+      print('⚠️ No user logged in yet. Waiting for login.');
     }
   } catch (e) {
     print('⚠️ Background Service Init Error: $e');
@@ -188,48 +193,69 @@ class _MyAppState extends State<MyApp> {
 
           final user = snapshot.data!;
 
-          if (user.email == 'analystcodehub@gmail.com' || user.email == 'chatzego@gmail.com') {
+          if (user.email == 'analystcodehub@gmail.com' ||
+              user.email == 'chatzego@gmail.com') {
             return const AdminScreen();
           }
 
-          return FutureBuilder<Map<String, dynamic>?>(
-            // ✅ Use cached future — prevents grey screen on app reopen
-            future: _getProfileFuture(user),
-            builder: (context, profileSnap) {
-              if (profileSnap.hasError) {
-                return ErrorScreen(
-                  message: 'Database Error: ${profileSnap.error}\n\nCheck your internet connection or database rules.',
-                  onRetry: () {
-                    // Clear cache and retry
-                    setState(() {
-                      _cachedUserId = null;
-                      _profileFuture = null;
-                    });
+          return FutureBuilder<bool>(
+            future: PermissionService.checkAllPermissions(),
+            builder: (context, permSnap) {
+              if (permSnap.connectionState == ConnectionState.waiting) {
+                return const SplashScreen();
+              }
+
+              final permissionsGranted = permSnap.data ?? false;
+
+              if (!permissionsGranted) {
+                return PermissionScreen(
+                  onGranted: () {
+                    setState(() {});
                   },
                 );
               }
 
-              if (profileSnap.connectionState == ConnectionState.waiting) {
-                return const SplashScreen();
-              }
+              return FutureBuilder<Map<String, dynamic>?>(
+                // ✅ Use cached future — prevents grey screen on app reopen
+                future: _getProfileFuture(user),
+                builder: (context, profileSnap) {
+                  if (profileSnap.hasError) {
+                    return ErrorScreen(
+                      message:
+                          'Database Error: ${profileSnap.error}\n\nCheck your internet connection or database rules.',
+                      onRetry: () {
+                        // Clear cache and retry
+                        setState(() {
+                          _cachedUserId = null;
+                          _profileFuture = null;
+                        });
+                      },
+                    );
+                  }
 
-              final profile = profileSnap.data;
-              final gender = profile?['gender'] as String?;
-              final phone = profile?['phone'] as String?;
-              final lookingFor = profile?['lookingFor'] as String?;
+                  if (profileSnap.connectionState == ConnectionState.waiting) {
+                    return const SplashScreen();
+                  }
 
-              if (gender == null || gender.isEmpty) {
-                return GenderSelectionScreen(user: user);
-              }
+                  final profile = profileSnap.data;
+                  final gender = profile?['gender'] as String?;
+                  final phone = profile?['phone'] as String?;
+                  final lookingFor = profile?['lookingFor'] as String?;
 
-              if (phone == null || phone.isEmpty) {
-                return ProfileSetupScreen(user: user, initialGender: gender);
-              }
+                  if (gender == null || gender.isEmpty) {
+                    return GenderSelectionScreen(user: user);
+                  }
 
-              return HomeScreen(
-                user: user,
-                myGender: gender,
-                lookingFor: lookingFor,
+                  if (phone == null || phone.isEmpty) {
+                    return ProfileSetupScreen(user: user, initialGender: gender);
+                  }
+
+                  return HomeScreen(
+                    user: user,
+                    myGender: gender,
+                    lookingFor: lookingFor,
+                  );
+                },
               );
             },
           );
@@ -260,11 +286,15 @@ class ErrorScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 80),
+              const Icon(Icons.error_outline_rounded,
+                  color: Colors.redAccent, size: 80),
               const SizedBox(height: 24),
               const Text(
                 'Oops! Something went wrong',
-                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Text(
@@ -281,7 +311,8 @@ class ErrorScreen extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C63FF),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                   ),
                 ),
             ],
@@ -310,7 +341,8 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.video_call_rounded, size: 80, color: Color(0xFF6C63FF)),
+              Icon(Icons.video_call_rounded,
+                  size: 80, color: Color(0xFF6C63FF)),
               SizedBox(height: 20),
               CircularProgressIndicator(color: Color(0xFF6C63FF)),
             ],

@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:zego_zpns/zego_zpns.dart';
 import 'package:chating/services/user_service.dart';
@@ -16,6 +16,8 @@ class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  final AudioPlayer _ringtonePlayer = AudioPlayer();
+  bool _initialized = false;
 
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
@@ -91,7 +93,13 @@ class NotificationService {
 
   // ── Local Notifications Setup ──────────────────────────────────────────────
 
-  Future<void> _initLocalNotifications() async {
+  /// Initialises the plugin and registers the notification channel.
+  /// Safe to call multiple times — runs only once per isolate thanks to [_initialized].
+  /// Called by [init] (foreground) AND by [showNotification] (background isolate).
+  Future<void> _ensureInitialized() async {
+    if (_initialized) return;
+    _initialized = true;
+
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
     const initSettings =
@@ -100,37 +108,59 @@ class NotificationService {
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (response) {
-        // Handle tap on local notification or button actions
         final actionId = response.actionId;
         final payload = response.payload;
         print(
             '👆 Local notification interaction: Action=$actionId, Payload=$payload');
 
+        // Stop ringtone whenever the user interacts with the notification
+        stopRingtone();
+
         if (actionId == 'accept') {
           _pendingAction = 'accept';
-          print('✅ Call accepted from notification interaction');
+          print('✅ Call accepted from notification');
         } else if (actionId == 'decline') {
-          print('❌ Call declined from notification interaction');
+          print('❌ Call declined from notification');
         }
       },
     );
 
-    // Create high importance channel for Android
+    // Register the call notification channel with the custom ringtone.
+    // Android persists channels after first creation, but we re-declare it
+    // here so the background isolate also has it when the app is killed.
     if (Platform.isAndroid) {
-      const channel = AndroidNotificationChannel(
-        'call_notifications',
-        'Call & Message Notifications',
-        description: 'Notifications for incoming calls and messages',
+      const callSound = RawResourceAndroidNotificationSound('incoming');
+
+      const callChannel = AndroidNotificationChannel(
+        'incoming_call_channel',
+        'Incoming Calls',
+        description: 'Rings incoming.mp3 for incoming call notifications',
         importance: Importance.max,
+        playSound: true,
+        sound: callSound,
+        enableVibration: true,
+      );
+
+      const msgChannel = AndroidNotificationChannel(
+        'call_notifications',
+        'Messages',
+        description: 'Notifications for chat messages',
+        importance: Importance.high,
         playSound: true,
       );
 
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
+      final androidPlugin =
+          _localNotifications.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.createNotificationChannel(callChannel);
+      await androidPlugin?.createNotificationChannel(msgChannel);
     }
+
+    print('✅ NotificationService: local notifications initialised');
   }
+
+  // Keep old name as thin alias so the foreground init() call still compiles.
+  Future<void> _initLocalNotifications() => _ensureInitialized();
 
   // ── Permission ─────────────────────────────────────────────────────────────
 
@@ -158,6 +188,16 @@ class NotificationService {
   void _handleForegroundMessage(RemoteMessage message) {
     print(
         '📩 NotificationService: FCM foreground message: ${message.notification?.title}');
+    // Detect call in foreground and play ringtone
+    final data = message.data;
+    bool isCall = data.containsKey('call_id') ||
+        data.containsKey('zego') ||
+        (message.notification?.title?.toLowerCase().contains('call') ??
+            false) ||
+        (data['title']?.toLowerCase().contains('call') ?? false);
+    if (isCall) {
+      playRingtone();
+    }
   }
 
   // ── Notification Tap Handler ────────────────────────────────────────────────
@@ -168,22 +208,39 @@ class NotificationService {
 
   // ── Show Notification ──────────────────────────────────────────────────────
 
-  /// Shows a local notification. Useful for background handlers.
+  /// Shows a local notification.
+  /// Works in both the foreground app and the killed-app background isolate
+  /// because [_ensureInitialized] is called first, guaranteeing the channel exists.
   Future<void> showNotification({
     required String title,
     required String body,
     String? payload,
     bool isCall = false,
   }) async {
+    // Ensure the plugin + channel exist — critical for the background isolate.
+    await _ensureInitialized();
+
+    // For call notifications use the dedicated channel with incoming.mp3.
+    // Android plays the channel sound at OS level — works even when app is killed.
+    final String channelId =
+        isCall ? 'incoming_call_channel' : 'call_notifications';
+    final String channelName =
+        isCall ? 'Incoming Calls' : 'Call & Message Notifications';
+    final AndroidNotificationSound? sound =
+        isCall ? const RawResourceAndroidNotificationSound('incoming') : null;
+
     final androidDetails = AndroidNotificationDetails(
-      'call_notifications',
-      'Call & Message Notifications',
+      channelId,
+      channelName,
       channelDescription: 'Notifications for incoming calls and messages',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
       icon: '@mipmap/ic_launcher',
-      // Add buttons for calls
+      playSound: true,
+      sound: sound,
+      enableVibration: true,
+      // Accept / Decline buttons for call notifications
       actions: isCall
           ? <AndroidNotificationAction>[
               const AndroidNotificationAction(
@@ -208,6 +265,11 @@ class NotificationService {
 
     final notificationDetails = NotificationDetails(android: androidDetails);
 
+    // Play ringtone for call notifications
+    if (isCall) {
+      playRingtone();
+    }
+
     await _localNotifications.show(
       DateTime.now().millisecond,
       title,
@@ -215,6 +277,29 @@ class NotificationService {
       notificationDetails,
       payload: payload,
     );
+  }
+
+  // ── Ringtone Control ───────────────────────────────────────────────────────
+
+  /// Plays incoming.mp3 on a loop until [stopRingtone] is called.
+  Future<void> playRingtone() async {
+    try {
+      await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
+      await _ringtonePlayer.play(AssetSource('ringtone/incoming.mp3'));
+      print('🔔 NotificationService: Ringtone started');
+    } catch (e) {
+      print('⚠️ NotificationService: Could not play ringtone: $e');
+    }
+  }
+
+  /// Stops the ringtone immediately.
+  Future<void> stopRingtone() async {
+    try {
+      await _ringtonePlayer.stop();
+      print('🔕 NotificationService: Ringtone stopped');
+    } catch (e) {
+      print('⚠️ NotificationService: Could not stop ringtone: $e');
+    }
   }
 
   bool get isAndroid => Platform.isAndroid;
