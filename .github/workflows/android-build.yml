@@ -1,4 +1,4 @@
-name: Flutter Cloud Build
+name: Build Flutter APK for Physical Devices
 
 # Tells GitHub to run on both main and master branches
 on:
@@ -15,6 +15,12 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
     # Installs Flutter on the cloud computer
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
@@ -24,13 +30,20 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
-    # Builds the Flutter testing APK
-    - name: Build APK
-      run: flutter build apk --debug
+    # Builds the Flutter release APK for physical devices
+    - name: Build APK for Physical Devices
+      run: flutter build apk --release --target-platform android-arm,android-arm64 --split-per-abi
 
-    # Uploads the finished APK for you to download
-    - name: Upload APK
+    # Uploads the finished arm64-v8a APK for modern phones
+    - name: Upload Modern APK (arm64-v8a)
       uses: actions/upload-artifact@v4
       with:
-        name: My-Flutter-App-APK
-        path: build/app/outputs/flutter-apk/app-debug.apk
+        name: app-arm64-v8a-release
+        path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+    # Uploads the finished armeabi-v7a APK for older phones
+    - name: Upload Older APK (armeabi-v7a)
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-armeabi-v7a-release
+        path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
