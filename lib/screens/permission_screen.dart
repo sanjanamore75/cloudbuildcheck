@@ -15,10 +15,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
 
   Future<void> _requestPermissions() async {
     setState(() => _isLoading = true);
-    
+
     await PermissionService.requestAllPermissions();
     final granted = await PermissionService.checkAllPermissions();
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
       if (granted) {
@@ -26,7 +26,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('All permissions are required to use this app. Please grant them.'),
+            content: Text(
+                'All permissions are required to use this app. Please grant them.'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -61,7 +62,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.5),
+                        color: const Color(0xFF6C63FF).withValues(alpha: 0.5),
                         blurRadius: 30,
                         spreadRadius: 5,
                       ),
@@ -108,12 +109,14 @@ class _PermissionScreenState extends State<PermissionScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         elevation: 8,
-                        shadowColor: const Color(0xFF6C63FF).withOpacity(0.4),
+                        shadowColor:
+                            const Color(0xFF6C63FF).withValues(alpha: 0.4),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_circle_outline_rounded, size: 24, color: Colors.white),
+                          Icon(Icons.check_circle_outline_rounded,
+                              size: 24, color: Colors.white),
                           SizedBox(width: 12),
                           Text(
                             'Grant Permissions',

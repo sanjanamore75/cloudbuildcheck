@@ -25,9 +25,10 @@ class _SpoofLoginScreenState extends State<SpoofLoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final AppUser mockUser = AppUser(uid: uid, displayName: 'User', email: 'admin_seed@example.com');
+      final AppUser mockUser = AppUser(
+          uid: uid, displayName: 'User', email: 'admin_seed@example.com');
       final profile = await UserService.getUserData(mockUser);
-      
+
       if (profile == null) {
         _showSnack('Profile not found for UID: $uid');
         return;
@@ -79,7 +80,8 @@ class _SpoofLoginScreenState extends State<SpoofLoginScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF1a1a2e),
       appBar: AppBar(
-        title: const Text('Admin Spoof Login', style: TextStyle(color: Colors.white)),
+        title: const Text('Admin Spoof Login',
+            style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF16213e),
         actions: [
           IconButton(
@@ -95,17 +97,21 @@ class _SpoofLoginScreenState extends State<SpoofLoginScreen> {
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.admin_panel_settings_rounded, size: 64, color: Color(0xFFFFB74D)),
+                const Icon(Icons.admin_panel_settings_rounded,
+                    size: 64, color: Color(0xFFFFB74D)),
                 const SizedBox(height: 16),
                 const Text(
                   'Act as a Pushed Profile',
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -121,7 +127,7 @@ class _SpoofLoginScreenState extends State<SpoofLoginScreen> {
                     hintText: 'Enter Pushed Profile UID...',
                     hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.08),
+                    fillColor: Colors.white.withValues(alpha: 0.08),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -137,11 +143,14 @@ class _SpoofLoginScreenState extends State<SpoofLoginScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6C63FF),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: _isLoading 
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Login as Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Login as Profile',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:zego_zpns/zego_zpns.dart';
 import 'package:chating/services/user_service.dart';
 import 'package:chating/services/ringtone_service.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
 /// Manages FCM token retrieval, ZIM push registration,
 /// ZPNs registration, and notification permission requests.
@@ -116,6 +116,9 @@ class NotificationService {
 
         // Stop ringtone whenever the user interacts with the notification
         stopRingtone();
+        try {
+          FlutterRingtonePlayer().stop();
+        } catch (_) {}
 
         if (actionId == 'accept') {
           _pendingAction = 'accept';
@@ -242,7 +245,9 @@ class NotificationService {
       sound: sound,
       enableVibration: true,
       autoCancel: true,
-      additionalFlags: isCall ? Int32List.fromList(<int>[4]) : null, // FLAG_INSISTENT to loop sound/vibration natively
+      additionalFlags: isCall
+          ? Int32List.fromList(<int>[4])
+          : null, // FLAG_INSISTENT to loop sound/vibration natively
       // Accept / Decline buttons for call notifications
       actions: isCall
           ? <AndroidNotificationAction>[

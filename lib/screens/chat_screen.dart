@@ -82,7 +82,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // 2. Send via ZIM in the background
     final success = await _zim.sendTextMessage(_targetUID, text);
-    
+
     if (success) {
       // Update last message preview in Firebase
       await UserService.updateConversationLastMessage(
@@ -99,7 +99,6 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     }
   }
-
 
   void _initiateCall({required bool isVideo}) {
     widget.onCallUser(widget.targetProfile, isVideoCall: isVideo);
@@ -135,9 +134,9 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
+          color: Colors.white.withValues(alpha: 0.04),
           border: Border(
-            bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
+            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
           ),
         ),
         child: Row(
@@ -152,9 +151,12 @@ class _ChatScreenState extends State<ChatScreen> {
               backgroundImage: (photo != null && photo.isNotEmpty)
                   ? NetworkImage(photo)
                   : null,
-              backgroundColor: const Color(0xFF6C63FF).withOpacity(0.3),
+              backgroundColor: const Color(0xFF6C63FF).withValues(alpha: 0.3),
               child: (photo == null || photo.isEmpty)
-                  ? Text(_targetName.isNotEmpty ? _targetName[0].toUpperCase() : 'U',
+                  ? Text(
+                      _targetName.isNotEmpty
+                          ? _targetName[0].toUpperCase()
+                          : 'U',
                       style: const TextStyle(
                           color: Colors.white, fontWeight: FontWeight.bold))
                   : null,
@@ -170,8 +172,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           fontSize: 17,
                           fontWeight: FontWeight.bold)),
                   const Text('Tap to view profile',
-                      style:
-                          TextStyle(color: Colors.white38, fontSize: 11)),
+                      style: TextStyle(color: Colors.white38, fontSize: 11)),
                 ],
               ),
             ),
@@ -205,9 +206,9 @@ class _ChatScreenState extends State<ChatScreen> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Icon(icon, color: color, size: 20),
       ),
@@ -227,11 +228,10 @@ class _ChatScreenState extends State<ChatScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.chat_bubble_outline_rounded,
-                size: 80, color: Colors.white.withOpacity(0.08)),
+                size: 80, color: Colors.white.withValues(alpha: 0.08)),
             const SizedBox(height: 16),
             Text('Say hello to $_targetName! 👋',
-                style:
-                    const TextStyle(color: Colors.white38, fontSize: 16)),
+                style: const TextStyle(color: Colors.white38, fontSize: 16)),
             const SizedBox(height: 8),
             const Text('Messages are end-to-end encrypted.',
                 style: TextStyle(color: Colors.white24, fontSize: 12)),
@@ -253,8 +253,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
         // Show date separator if needed (check message above - which is index + 1 in reverse list)
         final showDate = index == _messages.length - 1 ||
-            _isDifferentDay(
-                _messages[index + 1]['timestamp'] as int? ?? 0, ts);
+            _isDifferentDay(_messages[index + 1]['timestamp'] as int? ?? 0, ts);
 
         return Column(
           children: [
@@ -269,9 +268,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isDifferentDay(int ts1, int ts2) {
     final d1 = DateTime.fromMillisecondsSinceEpoch(ts1);
     final d2 = DateTime.fromMillisecondsSinceEpoch(ts2);
-    return d1.day != d2.day ||
-        d1.month != d2.month ||
-        d1.year != d2.year;
+    return d1.day != d2.day || d1.month != d2.month || d1.year != d2.year;
   }
 
   Widget _buildDateSeparator(int timestamp) {
@@ -294,33 +291,27 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Expanded(
-              child: Divider(color: Colors.white.withOpacity(0.1))),
+          Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.1))),
           const SizedBox(width: 8),
           Text(label,
               style: const TextStyle(
-                  color: Colors.white38,
-                  fontSize: 11,
-                  letterSpacing: 0.5)),
+                  color: Colors.white38, fontSize: 11, letterSpacing: 0.5)),
           const SizedBox(width: 8),
-          Expanded(
-              child: Divider(color: Colors.white.withOpacity(0.1))),
+          Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.1))),
         ],
       ),
     );
   }
 
   Widget _buildBubble(
-      {required String text,
-      required bool isMine,
-      required int timestamp}) {
+      {required String text, required bool isMine, required int timestamp}) {
     final time = _formatTime(timestamp);
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.72),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
         margin: EdgeInsets.only(
           top: 3,
           bottom: 3,
@@ -334,7 +325,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   colors: [Color(0xFF6C63FF), Color(0xFF4F8EF7)],
                 )
               : null,
-          color: isMine ? null : Colors.white.withOpacity(0.08),
+          color: isMine ? null : Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
@@ -343,7 +334,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           border: isMine
               ? null
-              : Border.all(color: Colors.white.withOpacity(0.1)),
+              : Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Column(
           crossAxisAlignment:
@@ -351,14 +342,12 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Text(text,
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    height: 1.4)),
+                    color: Colors.white, fontSize: 15, height: 1.4)),
             const SizedBox(height: 4),
             Text(time,
                 style: TextStyle(
                     color: isMine
-                        ? Colors.white.withOpacity(0.55)
+                        ? Colors.white.withValues(alpha: 0.55)
                         : Colors.white38,
                     fontSize: 10)),
           ],
@@ -381,19 +370,19 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
+          color: Colors.white.withValues(alpha: 0.04),
           border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(0.08))),
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
         ),
         child: Row(
           children: [
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(24),
                   border:
-                      Border.all(color: Colors.white.withOpacity(0.12)),
+                      Border.all(color: Colors.white.withValues(alpha: 0.12)),
                 ),
                 child: TextField(
                   controller: _textController,
@@ -403,7 +392,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: InputDecoration(
                     hintText: 'Type a message…',
                     hintStyle:
-                        TextStyle(color: Colors.white.withOpacity(0.25)),
+                        TextStyle(color: Colors.white.withValues(alpha: 0.25)),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 18, vertical: 12),
@@ -426,7 +415,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6C63FF).withOpacity(0.35),
+                      color: const Color(0xFF6C63FF).withValues(alpha: 0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     )

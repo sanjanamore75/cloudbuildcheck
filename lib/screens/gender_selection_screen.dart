@@ -109,7 +109,9 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
           backgroundColor: const Color(0xFF6C63FF),
           child: widget.user.photoURL == null
               ? Text(
-                  (widget.user.displayName != null && widget.user.displayName!.isNotEmpty) ? widget.user.displayName![0].toUpperCase() : 'U',
+                  (widget.user.displayName.isNotEmpty)
+                      ? widget.user.displayName[0].toUpperCase()
+                      : 'U',
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -119,7 +121,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
         ),
         const SizedBox(height: 16),
         Text(
-          'Hey, ${widget.user.displayName?.split(' ').first ?? 'there'} 👋',
+          'Hey, ${widget.user.displayName.split(' ').first ?? 'there'} 👋',
           style: const TextStyle(
             color: Colors.white70,
             fontSize: 16,
@@ -194,7 +196,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
               borderRadius: BorderRadius.circular(16),
             ),
             elevation: isReady ? 8 : 0,
-            shadowColor: const Color(0xFF6C63FF).withOpacity(0.5),
+            shadowColor: const Color(0xFF6C63FF).withValues(alpha: 0.5),
           ),
           child: _saving
               ? const SizedBox(
@@ -261,8 +263,8 @@ class _GenderCard extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: isSelected
                 ? [
-                    selectedColor.withOpacity(0.9),
-                    selectedColor.withOpacity(0.5),
+                    selectedColor.withValues(alpha: 0.9),
+                    selectedColor.withValues(alpha: 0.5),
                   ]
                 : gradientColors,
           ),
@@ -274,7 +276,7 @@ class _GenderCard extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: selectedColor.withOpacity(0.45),
+                    color: selectedColor.withValues(alpha: 0.45),
                     blurRadius: 24,
                     offset: const Offset(0, 8),
                   )
@@ -328,7 +330,7 @@ class _GenderCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: selectedColor.withOpacity(0.6),
+                            color: selectedColor.withValues(alpha: 0.6),
                             blurRadius: 8,
                           )
                         ],

@@ -1,5 +1,4 @@
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:chating/models/app_user.dart';
 
 class UserService {
@@ -68,9 +67,10 @@ class UserService {
   /// Returns the full user data.
   static Future<Map<String, dynamic>?> getUserData(AppUser user) async {
     try {
-      final snap = await getUserRef(user).get().timeout(const Duration(seconds: 5));
+      final snap =
+          await getUserRef(user).get().timeout(const Duration(seconds: 5));
       if (!snap.exists || snap.value == null) return null;
-      
+
       if (snap.value is Map) {
         return Map<String, dynamic>.from(snap.value as Map);
       }
@@ -108,7 +108,8 @@ class UserService {
         if (user['uid'] == excludeUID) return false;
 
         // 2. Filter seed profiles if requested
-        if (onlyRealUsers && (user['isSeed'] == true || user['isSeed'] == 'true')) {
+        if (onlyRealUsers &&
+            (user['isSeed'] == true || user['isSeed'] == 'true')) {
           return false;
         }
 
@@ -301,9 +302,8 @@ class UserService {
     return _db.ref('conversations/$myUID').onValue.map((event) {
       final data = event.snapshot.value as Map<dynamic, dynamic>?;
       if (data == null) return [];
-      final list = data.values
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      final list =
+          data.values.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       list.sort((a, b) {
         final aT = a['lastActivity'] as int? ?? 0;
         final bT = b['lastActivity'] as int? ?? 0;
@@ -326,19 +326,27 @@ class UserService {
     });
   }
 
-  /// Returns a merged stream of conversations and call alerts for [uid].
-  static Stream<List<Map<String, dynamic>>> getUnifiedHistory(String uid) async* {
+  /// Returns a merged stream of conversations and call alerts for [uid],
+  /// de-duplicated by target user's UID (keeping the most recent interaction).
+  static Stream<List<Map<String, dynamic>>> getUnifiedHistory(
+      String uid) async* {
     List<Map<String, dynamic>> convs = [];
     List<Map<String, dynamic>> calls = [];
 
     await for (final event in _db.ref('conversations/$uid').onValue) {
       final data = event.snapshot.value as Map<dynamic, dynamic>?;
-      convs = data?.values.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
-      
+      convs = data?.values
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
+
       // Also get calls
       final callSnap = await _db.ref('call_alerts/$uid').get();
       final callData = callSnap.value as Map<dynamic, dynamic>?;
-      calls = callData?.values.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
+      calls = callData?.values
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
 
       final merged = [...convs, ...calls];
       merged.sort((a, b) {
@@ -346,8 +354,20 @@ class UserService {
         final bT = (b['lastActivity'] ?? b['timestamp']) as int? ?? 0;
         return bT.compareTo(aT);
       });
-      yield merged;
+
+      // Deduplicate by target user UID (uid or callerId)
+      final Map<String, Map<String, dynamic>> uniqueProfiles = {};
+      for (final item in merged) {
+        final targetUID = item['uid'] ?? item['callerId'];
+        if (targetUID != null && targetUID.toString().isNotEmpty) {
+          final key = targetUID.toString();
+          if (!uniqueProfiles.containsKey(key)) {
+            uniqueProfiles[key] = item;
+          }
+        }
+      }
+
+      yield uniqueProfiles.values.toList();
     }
   }
 }
-

@@ -59,7 +59,7 @@ class _AdminScreenState extends State<AdminScreen> {
       );
       if (mounted) {
         await UserService.saveProfile(
-          user: AppUser.fromFirebaseUser(user), 
+          user: AppUser.fromFirebaseUser(user),
           gender: 'admin',
         );
         _showSnack('Admin Zego online (UID: ${user.uid})', isError: false);
@@ -75,15 +75,18 @@ class _AdminScreenState extends State<AdminScreen> {
     });
     ZegoUIKitPrebuiltCallInvitationService().uninit();
     await _initZego();
-    _showSnack('Identity restored to Admin (Receiving calls again)', isError: false);
+    _showSnack('Identity restored to Admin (Receiving calls again)',
+        isError: false);
   }
 
-  Future<void> _initiateSpoofedCall(Map<String, dynamic> seedProfile, Map<String, dynamic> targetUser, {required bool isVideo}) async {
+  Future<void> _initiateSpoofedCall(
+      Map<String, dynamic> seedProfile, Map<String, dynamic> targetUser,
+      {required bool isVideo}) async {
     setState(() {
       _isSpoofing = true;
       _spoofName = seedProfile['name'] ?? 'Profile';
     });
-    
+
     // Init as the seed profile
     await ZegoService().init(
       userID: seedProfile['uid'],
@@ -103,130 +106,178 @@ class _AdminScreenState extends State<AdminScreen> {
 
   void _showRealUsersDialog(Map<String, dynamic> seedProfile) {
     showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        title: Text('Call a user as ${seedProfile['name']}', style: const TextStyle(color: Colors.white, fontSize: 18)),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: UserService.realUsersStream(),
-            builder: (ctx, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
-              }
-              final users = snapshot.data ?? [];
-              if (users.isEmpty) return const Text('No real users found', style: TextStyle(color: Colors.white54));
-              
-              return ListView.builder(
-                shrinkWrap: true,
-                itemCount: users.length,
-                itemBuilder: (ctx, i) {
-                  final u = users[i];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFF6C63FF).withOpacity(0.3),
-                      backgroundImage: (u['photoURL'] != null && u['photoURL'].toString().isNotEmpty) ? NetworkImage(u['photoURL']) : null,
-                      child: (u['photoURL'] == null || u['photoURL'].toString().isEmpty) 
-                          ? Text((u['name'] != null && u['name'].toString().isNotEmpty) ? u['name'].toString()[0].toUpperCase() : 'U', style: const TextStyle(color: Colors.white))
-                          : null,
-                    ),
-                    title: Text(u['name'] ?? 'User', style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(u['uid'], style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.videocam_rounded, color: Color(0xFF6C63FF)), 
-                          tooltip: 'Video Call',
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _initiateSpoofedCall(seedProfile, u, isVideo: true);
-                          }
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.call_rounded, color: Color(0xFF00C9A7)), 
-                          tooltip: 'Voice Call',
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _initiateSpoofedCall(seedProfile, u, isVideo: false);
-                          }
-                        ),
-                      ],
-                    )
-                  );
-                }
-              );
-            }
-          )
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          )
-        ],
-      )
-    );
+        context: context,
+        builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF1E1E2E),
+              title: Text('Call a user as ${seedProfile['name']}',
+                  style: const TextStyle(color: Colors.white, fontSize: 18)),
+              content: SizedBox(
+                  width: double.maxFinite,
+                  child: StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: UserService.realUsersStream(),
+                      builder: (ctx, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator(
+                                  color: Color(0xFF6C63FF)));
+                        }
+                        final users = snapshot.data ?? [];
+                        if (users.isEmpty)
+                          return const Text('No real users found',
+                              style: TextStyle(color: Colors.white54));
+
+                        return ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: users.length,
+                            itemBuilder: (ctx, i) {
+                              final u = users[i];
+                              return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: const Color(0xFF6C63FF)
+                                        .withValues(alpha: 0.3),
+                                    backgroundImage: (u['photoURL'] != null &&
+                                            u['photoURL'].toString().isNotEmpty)
+                                        ? NetworkImage(u['photoURL'])
+                                        : null,
+                                    child: (u['photoURL'] == null ||
+                                            u['photoURL'].toString().isEmpty)
+                                        ? Text(
+                                            (u['name'] != null &&
+                                                    u['name']
+                                                        .toString()
+                                                        .isNotEmpty)
+                                                ? u['name']
+                                                    .toString()[0]
+                                                    .toUpperCase()
+                                                : 'U',
+                                            style: const TextStyle(
+                                                color: Colors.white))
+                                        : null,
+                                  ),
+                                  title: Text(u['name'] ?? 'User',
+                                      style:
+                                          const TextStyle(color: Colors.white)),
+                                  subtitle: Text(u['uid'],
+                                      style: const TextStyle(
+                                          color: Colors.white38, fontSize: 10)),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                          icon: const Icon(
+                                              Icons.videocam_rounded,
+                                              color: Color(0xFF6C63FF)),
+                                          tooltip: 'Video Call',
+                                          onPressed: () {
+                                            Navigator.pop(ctx);
+                                            _initiateSpoofedCall(seedProfile, u,
+                                                isVideo: true);
+                                          }),
+                                      IconButton(
+                                          icon: const Icon(Icons.call_rounded,
+                                              color: Color(0xFF00C9A7)),
+                                          tooltip: 'Voice Call',
+                                          onPressed: () {
+                                            Navigator.pop(ctx);
+                                            _initiateSpoofedCall(seedProfile, u,
+                                                isVideo: false);
+                                          }),
+                                    ],
+                                  ));
+                            });
+                      })),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Colors.white54)),
+                )
+              ],
+            ));
   }
 
   void _showProfileHistory(Map<String, dynamic> seedProfile) {
     showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        title: Text('History for ${seedProfile['name']}', style: const TextStyle(color: Colors.white, fontSize: 18)),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: UserService.getUnifiedHistory(seedProfile['uid']),
-            builder: (ctx, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
-              }
-              final items = snapshot.data ?? [];
-              if (items.isEmpty) return const Text('No history found', style: TextStyle(color: Colors.white54));
-              
-              return ListView.builder(
-                shrinkWrap: true,
-                itemCount: items.length,
-                itemBuilder: (ctx, i) {
-                  final item = items[i];
-                  final isCall = item.containsKey('callerId');
-                  final title = isCall ? (item['callerName'] ?? 'Unknown Caller') : (item['name'] ?? 'User');
-                  final timeMillis = item['lastActivity'] ?? item['timestamp'];
-                  final timeStr = timeMillis != null ? DateTime.fromMillisecondsSinceEpoch(timeMillis as int).toString().split('.')[0] : '';
-                  final subtitle = isCall 
-                      ? '${item['status'] == 'missed' ? 'Missed Call' : 'Call'} • $timeStr'
-                      : '${item['lastMessage'] ?? 'No messages'} • $timeStr';
-                      
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFF6C63FF).withOpacity(0.3),
-                      backgroundImage: NetworkImage(isCall ? (item['callerPhoto'] ?? '') : (item['photoURL'] ?? '')),
-                    ),
-                    title: Text(title, style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                    trailing: isCall 
-                        ? Icon(
-                            item['isVideo'] == true ? Icons.videocam : Icons.call,
-                            color: item['status'] == 'missed' ? Colors.redAccent : Colors.greenAccent,
-                          )
-                        : const Icon(Icons.chat_bubble_rounded, color: Color(0xFF6C63FF)),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Colors.white54)),
-          )
-        ],
-      )
-    );
+        context: context,
+        builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF1E1E2E),
+              title: Text('History for ${seedProfile['name']}',
+                  style: const TextStyle(color: Colors.white, fontSize: 18)),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: UserService.getUnifiedHistory(seedProfile['uid']),
+                  builder: (ctx, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFF6C63FF)));
+                    }
+                    final items = snapshot.data ?? [];
+                    if (items.isEmpty)
+                      return const Text('No history found',
+                          style: TextStyle(color: Colors.white54));
+
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      itemBuilder: (ctx, i) {
+                        final item = items[i];
+                        final isCall = item.containsKey('callerId');
+                        final title = isCall
+                            ? (item['callerName'] ?? 'Unknown Caller')
+                            : (item['name'] ?? 'User');
+                        final timeMillis =
+                            item['lastActivity'] ?? item['timestamp'];
+                        final timeStr = timeMillis != null
+                            ? DateTime.fromMillisecondsSinceEpoch(
+                                    timeMillis as int)
+                                .toString()
+                                .split('.')[0]
+                            : '';
+                        final subtitle = isCall
+                            ? '${item['status'] == 'missed' ? 'Missed Call' : 'Call'} • $timeStr'
+                            : '${item['lastMessage'] ?? 'No messages'} • $timeStr';
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                const Color(0xFF6C63FF).withValues(alpha: 0.3),
+                            backgroundImage: NetworkImage(isCall
+                                ? (item['callerPhoto'] ?? '')
+                                : (item['photoURL'] ?? '')),
+                          ),
+                          title: Text(title,
+                              style: const TextStyle(color: Colors.white)),
+                          subtitle: Text(subtitle,
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 12)),
+                          trailing: isCall
+                              ? Icon(
+                                  item['isVideo'] == true
+                                      ? Icons.videocam
+                                      : Icons.call,
+                                  color: item['status'] == 'missed'
+                                      ? Colors.redAccent
+                                      : Colors.greenAccent,
+                                )
+                              : const Icon(Icons.chat_bubble_rounded,
+                                  color: Color(0xFF6C63FF)),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Close',
+                      style: TextStyle(color: Colors.white54)),
+                )
+              ],
+            ));
   }
 
   @override
@@ -258,7 +309,10 @@ class _AdminScreenState extends State<AdminScreen> {
   Future<String?> _uploadImage(File file) async {
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref = FirebaseStorage.instance.ref().child('admin_profiles').child(fileName);
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('admin_profiles')
+          .child(fileName);
       await ref.putFile(file);
       return await ref.getDownloadURL();
     } catch (e) {
@@ -304,7 +358,8 @@ class _AdminScreenState extends State<AdminScreen> {
 
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
-        _showSnack('You must be logged in as admin to push profiles.', isError: true);
+        _showSnack('You must be logged in as admin to push profiles.',
+            isError: true);
         return;
       }
 
@@ -316,7 +371,7 @@ class _AdminScreenState extends State<AdminScreen> {
       );
 
       _showSnack('Profile pushed successfully!', isError: false);
-      
+
       // Reset form
       setState(() {
         _nameController.clear();
@@ -349,9 +404,17 @@ class _AdminScreenState extends State<AdminScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Admin Panel', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
+            const Text('Admin Panel',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 18)),
             if (_isSpoofing)
-              Text('🔥 SPOOFING ACTIVE: Calling as $_spoofName', style: const TextStyle(color: Color(0xFFFFB74D), fontSize: 11, fontWeight: FontWeight.bold)),
+              Text('🔥 SPOOFING ACTIVE: Calling as $_spoofName',
+                  style: const TextStyle(
+                      color: Color(0xFFFFB74D),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold)),
           ],
         ),
         backgroundColor: const Color(0xFF16213e),
@@ -360,22 +423,26 @@ class _AdminScreenState extends State<AdminScreen> {
             ElevatedButton.icon(
               onPressed: _restoreAdminIdentity,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFB74D).withOpacity(0.2),
+                backgroundColor: const Color(0xFFFFB74D).withValues(alpha: 0.2),
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
               ),
-              icon: const Icon(Icons.refresh_rounded, color: Color(0xFFFFB74D), size: 16),
-              label: const Text('Restore Admin', style: TextStyle(color: Color(0xFFFFB74D), fontSize: 12)),
+              icon: const Icon(Icons.refresh_rounded,
+                  color: Color(0xFFFFB74D), size: 16),
+              label: const Text('Restore Admin',
+                  style: TextStyle(color: Color(0xFFFFB74D), fontSize: 12)),
             ),
           const SizedBox(width: 8),
           IconButton(
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SpoofLoginScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const SpoofLoginScreen()),
               );
             },
-            icon: const Icon(Icons.people_alt_rounded, color: Color(0xFF6C63FF)),
+            icon:
+                const Icon(Icons.people_alt_rounded, color: Color(0xFF6C63FF)),
             tooltip: 'Spoof Login',
           ),
           IconButton(
@@ -391,214 +458,291 @@ class _AdminScreenState extends State<AdminScreen> {
           Expanded(
             child: Row(
               children: [
-          // Left side: Create form
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: const Color(0xFF16213e).withOpacity(0.5),
-              padding: const EdgeInsets.all(24),
-              child: ListView(
-                children: [
-                  const Text('Push New Profile', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 20),
+                // Left side: Create form
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    color: const Color(0xFF16213e).withValues(alpha: 0.5),
+                    padding: const EdgeInsets.all(24),
+                    child: ListView(
+                      children: [
+                        const Text('Push New Profile',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 20),
 
-                  // Name Input
-                  _buildLabel('Name'),
-                  _buildTextField(controller: _nameController, hint: 'E.g. Sarah'),
-                  const SizedBox(height: 16),
+                        // Name Input
+                        _buildLabel('Name'),
+                        _buildTextField(
+                            controller: _nameController, hint: 'E.g. Sarah'),
+                        const SizedBox(height: 16),
 
-                  // Gender Selector
-                  _buildLabel('Gender'),
-                  Row(
-                    children: [
-                      Expanded(child: _buildGenderChoice('male', '👨 Male', const Color(0xFF4F8EF7))),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildGenderChoice('female', '👩 Female', const Color(0xFFE91E8C))),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Image Source Toggle
-                  _buildLabel('Picture Source'),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<bool>(
-                          title: const Text('Upload Image', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                          value: false,
-                          groupValue: _useImageUrl,
-                          activeColor: const Color(0xFF6C63FF),
-                          onChanged: (val) => setState(() => _useImageUrl = val!),
-                          contentPadding: EdgeInsets.zero,
+                        // Gender Selector
+                        _buildLabel('Gender'),
+                        Row(
+                          children: [
+                            Expanded(
+                                child: _buildGenderChoice('male', '👨 Male',
+                                    const Color(0xFF4F8EF7))),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: _buildGenderChoice('female', '👩 Female',
+                                    const Color(0xFFE91E8C))),
+                          ],
                         ),
-                      ),
-                      Expanded(
-                        child: RadioListTile<bool>(
-                          title: const Text('Image URL', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                          value: true,
-                          groupValue: _useImageUrl,
-                          activeColor: const Color(0xFF6C63FF),
-                          onChanged: (val) => setState(() => _useImageUrl = val!),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
+                        const SizedBox(height: 20),
 
-                  // Picture Input
-                  if (_useImageUrl)
-                    _buildTextField(controller: _urlController, hint: 'Paste image URL here...')
-                  else
-                    GestureDetector(
-                      onTap: _pickImage,
-                      child: Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withOpacity(0.15)),
-                        ),
-                        child: _pickedImage != null 
-                            ? ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.file(_pickedImage!, fit: BoxFit.cover))
-                            : const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_photo_alternate_rounded, color: Colors.white54, size: 36),
-                                  SizedBox(height: 8),
-                                  Text('Tap to pick an image', style: TextStyle(color: Colors.white54, fontSize: 13)),
-                                ],
+                        // Image Source Toggle
+                        _buildLabel('Picture Source'),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<bool>(
+                                title: const Text('Upload Image',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 13)),
+                                value: false,
+                                groupValue: _useImageUrl,
+                                activeColor: const Color(0xFF6C63FF),
+                                onChanged: (val) =>
+                                    setState(() => _useImageUrl = val!),
+                                contentPadding: EdgeInsets.zero,
                               ),
-                      ),
-                    ),
-                  
-                  const SizedBox(height: 32),
+                            ),
+                            Expanded(
+                              child: RadioListTile<bool>(
+                                title: const Text('Image URL',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 13)),
+                                value: true,
+                                groupValue: _useImageUrl,
+                                activeColor: const Color(0xFF6C63FF),
+                                onChanged: (val) =>
+                                    setState(() => _useImageUrl = val!),
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
 
-                  // Push Button
-                  SizedBox(
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _pushProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63FF),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _isSaving 
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Push Profile', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        // Picture Input
+                        if (_useImageUrl)
+                          _buildTextField(
+                              controller: _urlController,
+                              hint: 'Paste image URL here...')
+                        else
+                          GestureDetector(
+                            onTap: _pickImage,
+                            child: Container(
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.15)),
+                              ),
+                              child: _pickedImage != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Image.file(_pickedImage!,
+                                          fit: BoxFit.cover))
+                                  : const Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.add_photo_alternate_rounded,
+                                            color: Colors.white54, size: 36),
+                                        SizedBox(height: 8),
+                                        Text('Tap to pick an image',
+                                            style: TextStyle(
+                                                color: Colors.white54,
+                                                fontSize: 13)),
+                                      ],
+                                    ),
+                            ),
+                          ),
+
+                        const SizedBox(height: 32),
+
+                        // Push Button
+                        SizedBox(
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _pushProfile,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6C63FF),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: _isSaving
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white)
+                                : const Text('Push Profile',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
+                ),
 
-          // Right side: Profile List
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Pushed Profiles', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: StreamBuilder<List<Map<String, dynamic>>>(
-                      stream: UserService.seedProfilesStream(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
-                        }
-                        final profiles = snapshot.data ?? [];
-                        if (profiles.isEmpty) {
-                          return const Center(child: Text('No pushed profiles yet.', style: TextStyle(color: Colors.white54)));
-                        }
-
-                        return ListView.builder(
-                          itemCount: profiles.length,
-                          itemBuilder: (context, index) {
-                            final p = profiles[index];
-                            final isFemale = p['gender'] == 'female';
-                            return StreamBuilder<List<Map<String, dynamic>>>(
-                              stream: UserService.getUnifiedHistory(p['uid']),
-                              builder: (context, historySnap) {
-                                final history = historySnap.data ?? [];
-                                final hasAlerts = history.isNotEmpty;
-                                final alertCount = history.length;
-
-                                return ListTile(
-                                  leading: Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: isFemale ? const Color(0xFFE91E8C).withOpacity(0.3) : const Color(0xFF4F8EF7).withOpacity(0.3),
-                                        backgroundImage: NetworkImage(p['photoURL'] ?? ''),
-                                      ),
-                                      if (hasAlerts)
-                                        Positioned(
-                                          right: -4,
-                                          top: -4,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.redAccent,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Text(
-                                              alertCount > 9 ? '9+' : alertCount.toString(),
-                                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  title: Text(p['name'] ?? '', style: const TextStyle(color: Colors.white)),
-                                  subtitle: Text(p['uid'] ?? '', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.history_rounded, color: hasAlerts ? Colors.amber : Colors.white38),
-                                        tooltip: 'View History',
-                                        onPressed: () => _showProfileHistory(p),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.wifi_calling_3_rounded, color: Color(0xFF00C9A7)),
-                                        tooltip: 'Call a user as this profile',
-                                        onPressed: () => _showRealUsersDialog(p),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_rounded, color: Colors.white38),
-                                        tooltip: 'Delete Profile',
-                                        onPressed: () => UserService.deleteProfile(p['uid']),
-                                      ),
-                                    ],
-                                  ),
-                                );
+                // Right side: Profile List
+                Expanded(
+                  flex: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Pushed Profiles',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 20),
+                        Expanded(
+                          child: StreamBuilder<List<Map<String, dynamic>>>(
+                            stream: UserService.seedProfilesStream(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                    child: CircularProgressIndicator(
+                                        color: Color(0xFF6C63FF)));
                               }
-                            );
-                          },
-                        );
-                      },
+                              final profiles = snapshot.data ?? [];
+                              if (profiles.isEmpty) {
+                                return const Center(
+                                    child: Text('No pushed profiles yet.',
+                                        style:
+                                            TextStyle(color: Colors.white54)));
+                              }
+
+                              return ListView.builder(
+                                itemCount: profiles.length,
+                                itemBuilder: (context, index) {
+                                  final p = profiles[index];
+                                  final isFemale = p['gender'] == 'female';
+                                  return StreamBuilder<
+                                          List<Map<String, dynamic>>>(
+                                      stream: UserService.getUnifiedHistory(
+                                          p['uid']),
+                                      builder: (context, historySnap) {
+                                        final history = historySnap.data ?? [];
+                                        final hasAlerts = history.isNotEmpty;
+                                        final alertCount = history.length;
+
+                                        return ListTile(
+                                          leading: Stack(
+                                            clipBehavior: Clip.none,
+                                            children: [
+                                              CircleAvatar(
+                                                backgroundColor: isFemale
+                                                    ? const Color(0xFFE91E8C)
+                                                        .withValues(alpha: 0.3)
+                                                    : const Color(0xFF4F8EF7)
+                                                        .withValues(alpha: 0.3),
+                                                backgroundImage: NetworkImage(
+                                                    p['photoURL'] ?? ''),
+                                              ),
+                                              if (hasAlerts)
+                                                Positioned(
+                                                  right: -4,
+                                                  top: -4,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.all(4),
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                      color: Colors.redAccent,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Text(
+                                                      alertCount > 9
+                                                          ? '9+'
+                                                          : alertCount
+                                                              .toString(),
+                                                      style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 9,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          title: Text(p['name'] ?? '',
+                                              style: const TextStyle(
+                                                  color: Colors.white)),
+                                          subtitle: Text(p['uid'] ?? '',
+                                              style: const TextStyle(
+                                                  color: Colors.white38,
+                                                  fontSize: 11)),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(
+                                                    Icons.history_rounded,
+                                                    color: hasAlerts
+                                                        ? Colors.amber
+                                                        : Colors.white38),
+                                                tooltip: 'View History',
+                                                onPressed: () =>
+                                                    _showProfileHistory(p),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(
+                                                    Icons
+                                                        .wifi_calling_3_rounded,
+                                                    color: Color(0xFF00C9A7)),
+                                                tooltip:
+                                                    'Call a user as this profile',
+                                                onPressed: () =>
+                                                    _showRealUsersDialog(p),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(
+                                                    Icons.delete_rounded,
+                                                    color: Colors.white38),
+                                                tooltip: 'Delete Profile',
+                                                onPressed: () =>
+                                                    UserService.deleteProfile(
+                                                        p['uid']),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-    ),
-  ],
-),
     );
   }
 
   Widget _buildPermissionBanner() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.amber.withOpacity(0.9),
+      color: Colors.amber.withValues(alpha: 0.9),
       child: Row(
         children: [
           const Icon(Icons.warning_amber_rounded, color: Colors.black87),
@@ -606,7 +750,10 @@ class _AdminScreenState extends State<AdminScreen> {
           const Expanded(
             child: Text(
               'Permissions required for background calls',
-              style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.black87,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold),
             ),
           ),
           TextButton(
@@ -615,7 +762,8 @@ class _AdminScreenState extends State<AdminScreen> {
               backgroundColor: Colors.black87,
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
-            child: const Text('Grant All', style: TextStyle(color: Colors.white, fontSize: 12)),
+            child: const Text('Grant All',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
           ),
         ],
       ),
@@ -625,16 +773,21 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
+      child: Text(text,
+          style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.bold)),
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint}) {
+  Widget _buildTextField(
+      {required TextEditingController controller, required String hint}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: TextField(
         controller: controller,
@@ -643,7 +796,8 @@ class _AdminScreenState extends State<AdminScreen> {
           hintText: hint,
           hintStyle: const TextStyle(color: Color(0xFF666666), fontSize: 14),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );
@@ -656,12 +810,17 @@ class _AdminScreenState extends State<AdminScreen> {
       child: Container(
         height: 50,
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+          color: isSelected
+              ? color.withValues(alpha: 0.2)
+              : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: isSelected ? color : Colors.white12),
         ),
         alignment: Alignment.center,
-        child: Text(label, style: TextStyle(color: isSelected ? color : Colors.white54, fontWeight: FontWeight.bold)),
+        child: Text(label,
+            style: TextStyle(
+                color: isSelected ? color : Colors.white54,
+                fontWeight: FontWeight.bold)),
       ),
     );
   }

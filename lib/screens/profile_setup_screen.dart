@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:chating/models/app_user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -28,21 +29,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   late TextEditingController _phoneController;
   late String _gender;
   late String _lookingFor;
-  
+
   File? _profileImage;
   bool _isSaving = false;
   final ImagePicker _picker = ImagePicker();
 
   // CLOUDINARY CONFIG
   // TODO: Replace with your actual Cloud Name
-  final String _cloudName = 'dlcxmgupv'; 
+  final String _cloudName = 'dlcxmgupv';
   final String _uploadPreset = 'chat_preset';
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.user.displayName ?? '');
-    _phoneController = TextEditingController();
+    _nameController =
+        TextEditingController(text: widget.user.displayName ?? '');
+    _phoneController = TextEditingController(text: '');
     _gender = widget.initialGender;
     _lookingFor = widget.initialGender == 'male' ? 'female' : 'male';
   }
@@ -77,9 +79,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   Future<String?> _uploadToCloudinary(File file) async {
     try {
-      final cloudinary = CloudinaryPublic(_cloudName, _uploadPreset, cache: false);
+      final cloudinary =
+          CloudinaryPublic(_cloudName, _uploadPreset, cache: false);
       CloudinaryResponse response = await cloudinary.uploadFile(
-        CloudinaryFile.fromFile(file.path, resourceType: CloudinaryResourceType.Image),
+        CloudinaryFile.fromFile(file.path,
+            resourceType: CloudinaryResourceType.Image),
       );
       return response.secureUrl;
     } catch (e) {
@@ -103,7 +107,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Upload correct image: No face detected in the picture.'),
+                content: Text(
+                    'Upload correct image: No face detected in the picture.'),
                 backgroundColor: Colors.orangeAccent,
               ),
             );
@@ -118,7 +123,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Failed to upload image. Please check your Cloudinary config.'),
+                content: Text(
+                    'Failed to upload image. Please check your Cloudinary config.'),
                 backgroundColor: Colors.redAccent,
               ),
             );
@@ -129,12 +135,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       }
 
       // 3. Save to Firebase
+      String rawPhone = _phoneController.text.trim();
+      String formattedPhone = rawPhone.startsWith('+91') ? rawPhone : '+91$rawPhone';
+
       await UserService.saveProfile(
         user: widget.user,
         gender: _gender,
         name: _nameController.text.trim(),
         lookingFor: _lookingFor,
-        phone: _phoneController.text.trim(),
+        phone: formattedPhone,
       );
 
       // If we have a photo, update the photoURL separately or in saveProfile
@@ -159,7 +168,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+              content: Text('Error saving profile: $e'),
+              backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -210,11 +221,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           child: CircleAvatar(
                             radius: 60,
                             backgroundColor: Colors.white.withOpacity(0.1),
-                            backgroundImage: _profileImage != null 
-                                ? FileImage(_profileImage!) 
-                                : (widget.user.photoURL != null ? NetworkImage(widget.user.photoURL!) : null) as ImageProvider?,
-                            child: (_profileImage == null && widget.user.photoURL == null)
-                                ? const Icon(Icons.add_a_photo_rounded, size: 40, color: Color(0xFF6C63FF))
+                            backgroundImage: _profileImage != null
+                                ? FileImage(_profileImage!)
+                                : (widget.user.photoURL != null
+                                    ? NetworkImage(widget.user.photoURL!)
+                                    : null) as ImageProvider?,
+                            child: (_profileImage == null &&
+                                    widget.user.photoURL == null)
+                                ? const Icon(Icons.add_a_photo_rounded,
+                                    size: 40, color: Color(0xFF6C63FF))
                                 : null,
                           ),
                         ),
@@ -223,8 +238,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: Color(0xFF6C63FF), shape: BoxShape.circle),
-                            child: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+                            decoration: const BoxDecoration(
+                                color: Color(0xFF6C63FF),
+                                shape: BoxShape.circle),
+                            child: const Icon(Icons.edit_rounded,
+                                color: Colors.white, size: 20),
                           ),
                         ),
                       ],
@@ -235,7 +253,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     child: Text(
                       'If you upload an image then only your profile\nwill be visible to others.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFFFFB74D), fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: Color(0xFFFFB74D),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -246,7 +267,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     controller: _nameController,
                     hint: 'Your name',
                     icon: Icons.person_rounded,
-                    validator: (val) => val == null || val.isEmpty ? 'Please enter your name' : null,
+                    validator: (val) => val == null || val.isEmpty
+                        ? 'Please enter your name'
+                        : null,
                   ),
                   const SizedBox(height: 20),
 
@@ -256,7 +279,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     value: _gender,
                     items: const [
                       DropdownMenuItem(value: 'male', child: Text('♂ Male')),
-                      DropdownMenuItem(value: 'female', child: Text('♀ Female')),
+                      DropdownMenuItem(
+                          value: 'female', child: Text('♀ Female')),
                     ],
                     onChanged: (val) => setState(() => _gender = val!),
                   ),
@@ -267,9 +291,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   _buildDropdown(
                     value: _lookingFor,
                     items: const [
-                      DropdownMenuItem(value: 'female', child: Text('👩 Females')),
+                      DropdownMenuItem(
+                          value: 'female', child: Text('👩 Females')),
                       DropdownMenuItem(value: 'male', child: Text('👨 Males')),
-                      DropdownMenuItem(value: 'both', child: Text('🌈 Everyone')),
+                      DropdownMenuItem(
+                          value: 'both', child: Text('🌈 Everyone')),
                     ],
                     onChanged: (val) => setState(() => _lookingFor = val!),
                   ),
@@ -279,10 +305,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   _buildLabel('Phone Number'),
                   _buildTextField(
                     controller: _phoneController,
-                    hint: '+1 234 567 890',
+                    hint: '98765 43210',
                     icon: Icons.phone_rounded,
                     keyboardType: TextInputType.phone,
-                    validator: (val) => val == null || val.isEmpty ? 'Please enter your phone number' : null,
+                    isPhoneNumber: true,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Please enter your phone number';
+                      }
+                      final digits = val.replaceAll(RegExp(r'\D'), '');
+                      if (digits.length != 10) {
+                        return 'Phone number must be exactly 10 digits';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 40),
 
@@ -294,7 +330,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       onPressed: _isSaving ? null : _saveProfile,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6C63FF),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                         elevation: 8,
                         shadowColor: const Color(0xFF6C63FF).withOpacity(0.5),
                       ),
@@ -339,6 +376,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    bool isPhoneNumber = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -351,12 +389,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         style: const TextStyle(color: Colors.white),
         keyboardType: keyboardType,
         validator: validator,
+        inputFormatters: isPhoneNumber
+            ? [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ]
+            : null,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
-          prefixIcon: Icon(icon, color: const Color(0xFF6C63FF), size: 20),
+          prefixIcon: isPhoneNumber
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(width: 16),
+                    Icon(icon, color: const Color(0xFF6C63FF), size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '+91 ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                )
+              : Icon(icon, color: const Color(0xFF6C63FF), size: 20),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: isPhoneNumber
+              ? const EdgeInsets.symmetric(horizontal: 16, vertical: 16)
+              : const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
     );
@@ -381,7 +445,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           onChanged: onChanged,
           dropdownColor: const Color(0xFF16213e),
           style: const TextStyle(color: Colors.white, fontSize: 15),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF6C63FF)),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+              color: Color(0xFF6C63FF)),
           isExpanded: true,
         ),
       ),

@@ -13,12 +13,12 @@ import 'package:chating/services/user_service.dart';
 import 'package:chating/services/notification_service.dart';
 import 'package:chating/services/permission_service.dart';
 import 'package:chating/screens/permission_screen.dart';
-import 'package:chating/screens/spoof_login_screen.dart';
 import 'package:chating/models/app_user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
 import 'package:chating/services/zego_service.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:chating/services/zim_service.dart';
 import 'package:chating/services/callkit_service.dart';
 
@@ -40,16 +40,23 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       String callId = data['call_id'] ?? '';
       String callerName = data['caller_name'] ?? 'Incoming Call';
       String? callerPhoto = data['caller_photo'] ?? data['avatar'];
-      bool isVideo = data['call_type'] == 'video' || data['is_video'] == 'true' || data['type'] == '1';
+      bool isVideo = data['call_type'] == 'video' ||
+          data['is_video'] == 'true' ||
+          data['type'] == '1';
 
       if (data.containsKey('zego')) {
         final zegoData = jsonDecode(data['zego'] as String);
         callId = zegoData['call_id'] ?? zegoData['invitation_id'] ?? callId;
-        callerName = zegoData['caller_name'] ?? zegoData['inviter_name'] ?? callerName;
-        callerPhoto = zegoData['caller_photo'] ?? zegoData['avatar'] ?? callerPhoto;
-        isVideo = zegoData['call_type'] == 'video' || zegoData['is_video'] == 'true' || zegoData['type'] == 1 || isVideo;
+        callerName =
+            zegoData['caller_name'] ?? zegoData['inviter_name'] ?? callerName;
+        callerPhoto =
+            zegoData['caller_photo'] ?? zegoData['avatar'] ?? callerPhoto;
+        isVideo = zegoData['call_type'] == 'video' ||
+            zegoData['is_video'] == 'true' ||
+            zegoData['type'] == 1 ||
+            isVideo;
       }
-      
+
       if (callId.isEmpty) {
         callId = DateTime.now().millisecondsSinceEpoch.toString();
       }
@@ -68,7 +75,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   String? senderName = data['sender_name'] ?? data['title'];
   String title = message.notification?.title ?? senderName ?? 'New Message';
-  String body = message.notification?.body ?? data['content'] ?? data['body'] ?? '';
+  String body =
+      message.notification?.body ?? data['content'] ?? data['body'] ?? '';
 
   // Show local notification for CHAT MESSAGES only
   await NotificationService().showNotification(
@@ -121,11 +129,15 @@ Future<void> _initBackgroundServices() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       print('✅ Existing user found: ${user.uid}');
-      
+
       final spoofedUid = prefs.getString('spoofed_uid');
       AppUser appUser;
       if (spoofedUid != null && spoofedUid.isNotEmpty) {
-        appUser = AppUser(uid: spoofedUid, displayName: 'User', email: 'admin_seed@example.com', isSeed: true);
+        appUser = AppUser(
+            uid: spoofedUid,
+            displayName: 'User',
+            email: 'admin_seed@example.com',
+            isSeed: true);
       } else {
         appUser = AppUser.fromFirebaseUser(user);
       }
@@ -170,14 +182,18 @@ class _MyAppState extends State<MyApp> {
     CallKitService.listenToEvents(
       onAccept: (callId, isVideo) async {
         print('🚀 CallKit accepted call: $callId');
+        try {
+          FlutterRingtonePlayer().stop();
+        } catch (_) {}
         final currentUser = FirebaseAuth.instance.currentUser;
         if (currentUser != null) {
           final appUser = AppUser.fromFirebaseUser(currentUser);
           final profile = await UserService.getUserData(appUser);
-          final displayName = profile?['name'] ?? currentUser.displayName ?? 'User';
-          
+          final displayName =
+              profile?['name'] ?? currentUser.displayName ?? 'User';
+
           await ZegoService().init(userID: appUser.uid, userName: displayName);
-          
+
           // Wait slightly for ZIM to sync the invitation state
           await Future.delayed(const Duration(seconds: 1));
           await ZegoUIKitPrebuiltCallInvitationService().accept();
@@ -185,18 +201,30 @@ class _MyAppState extends State<MyApp> {
       },
       onDecline: (callId) async {
         print('🚀 CallKit declined call: $callId');
+        try {
+          FlutterRingtonePlayer().stop();
+        } catch (_) {}
         final currentUser = FirebaseAuth.instance.currentUser;
         if (currentUser != null) {
           final appUser = AppUser.fromFirebaseUser(currentUser);
           final profile = await UserService.getUserData(appUser);
-          final displayName = profile?['name'] ?? currentUser.displayName ?? 'User';
-          
+          final displayName =
+              profile?['name'] ?? currentUser.displayName ?? 'User';
+
           await ZegoService().init(userID: appUser.uid, userName: displayName);
-          
+
           // Wait slightly for ZIM to sync the invitation state
           await Future.delayed(const Duration(seconds: 1));
           await ZegoUIKitPrebuiltCallInvitationService().reject();
-          ZegoService().uninit();
+           final state = WidgetsBinding.instance.lifecycleState;
+          final isAppInBackgroundOrKilled =
+              state == AppLifecycleState.paused || state == AppLifecycleState.detached;
+          if (isAppInBackgroundOrKilled) {
+            print('Device is in background/killed state ($state) - uninitializing ZegoService.');
+            ZegoService().uninit();
+          } else {
+            print('App is visible/foreground ($state) - keeping ZegoService initialized.');
+          }
         }
       },
     );
@@ -267,12 +295,14 @@ class _MyAppState extends State<MyApp> {
             return const AdminScreen();
           }
 
-
-
           final spoofedUid = prefs.getString('spoofed_uid');
           AppUser appUser;
           if (spoofedUid != null && spoofedUid.isNotEmpty) {
-            appUser = AppUser(uid: spoofedUid, displayName: 'User', email: 'admin_seed@example.com', isSeed: true);
+            appUser = AppUser(
+                uid: spoofedUid,
+                displayName: 'User',
+                email: 'admin_seed@example.com',
+                isSeed: true);
           } else {
             appUser = AppUser.fromFirebaseUser(user);
           }
@@ -326,7 +356,8 @@ class _MyAppState extends State<MyApp> {
                   }
 
                   if (phone == null || phone.isEmpty) {
-                    return ProfileSetupScreen(user: appUser, initialGender: gender);
+                    return ProfileSetupScreen(
+                        user: appUser, initialGender: gender);
                   }
 
                   return HomeScreen(

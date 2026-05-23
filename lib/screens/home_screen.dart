@@ -15,13 +15,14 @@ class HomeScreen extends StatefulWidget {
   final AppUser user;
   final String? myGender; // 'male' or 'female'
   final String? lookingFor; // 'male', 'female', or 'both'
-  const HomeScreen({super.key, required this.user, this.myGender, this.lookingFor});
+  const HomeScreen(
+      {super.key, required this.user, this.myGender, this.lookingFor});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   final AuthService _authService = AuthService();
   bool _zegoInitialized = false;
@@ -38,11 +39,25 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
     _initZego();
-    _currentInterest = widget.lookingFor ?? (widget.myGender == 'male' ? 'female' : 'male');
+    _currentInterest =
+        widget.lookingFor ?? (widget.myGender == 'male' ? 'female' : 'male');
     _searchController.addListener(
         () => setState(() => _searchText = _searchController.text.trim()));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (!ZegoService().isInitialized) {
+        print('📱 App resumed and Zego was offline: ensuring Zego & Zim are initialized...');
+        _initZego();
+      } else {
+        print('📱 App resumed: Zego is already active.');
+      }
+    }
   }
 
   Future<void> _checkPermissions() async {
@@ -72,19 +87,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // We don't uninit here to keep Zego alive for background notifications
     _searchController.dispose();
     super.dispose();
   }
 
-
   Future<void> _callUser(Map<String, dynamic> initialProfile,
       {required bool isVideoCall}) async {
     final targetUid = initialProfile['uid']?.toString() ?? '';
-    
+
     if (targetUid.isEmpty) {
       _showSnack('Invalid user ID', isError: true);
       return;
+    }
+
+    // Ensure Zego and Zim are initialized in case they were cleaned up or lost connection
+    await ZegoService().init(
+      userID: widget.user.uid,
+      userName: widget.user.displayName ?? 'User',
+    );
+    await ZimService().init(
+      userID: widget.user.uid,
+      userName: widget.user.displayName ?? 'User',
+    );
+    if (mounted) {
+      setState(() => _zegoInitialized = true);
     }
 
     if (!_zegoInitialized) {
@@ -100,11 +128,13 @@ class _HomeScreenState extends State<HomeScreen> {
       // the `initialProfile` map will be missing the `isSeed` and `adminUid` fields.
       final mockUser = AppUser(uid: targetUid, displayName: '', email: '');
       final fullProfile = await UserService.getUserData(mockUser);
-      
-      final profile = fullProfile ?? initialProfile; // fallback to initial if null
-      
+
+      final profile =
+          fullProfile ?? initialProfile; // fallback to initial if null
+
       final isSeed = profile['isSeed'] == true || profile['isSeed'] == 'true';
-      print('DEBUG: Attempting call to ${profile['name']} (UID: $targetUid, isSeed: $isSeed)');
+      print(
+          'DEBUG: Attempting call to ${profile['name']} (UID: $targetUid, isSeed: $isSeed)');
 
       List<ZegoCallUser> invitees = [];
 
@@ -114,9 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final adminId = profile['adminUid'].toString();
         print('DEBUG: Calling Admin UID: $adminId for seed profile');
         // Ring only the specific admin who created this profile
-        invitees = [
-          ZegoCallUser(adminId, profile['name'] ?? 'Admin')
-        ];
+        invitees = [ZegoCallUser(adminId, profile['name'] ?? 'Admin')];
       } else {
         print('DEBUG: Calling regular User UID: $targetUid');
         // Normal 1-on-1 call for real users or fallback
@@ -140,12 +168,13 @@ class _HomeScreenState extends State<HomeScreen> {
           callerName: widget.user.displayName ?? 'User',
           callerPhoto: widget.user.photoURL,
           isVideo: isVideoCall,
-          status: 'missed', 
+          status: 'missed',
         );
         if (alertId != null) alertIds[invitee.id] = alertId;
       }
 
-      print('📣 Sending call invitation to: ${invitees.map((u) => u.id).toList()} with resourceID: zego_call');
+      print(
+          '📣 Sending call invitation to: ${invitees.map((u) => u.id).toList()} with resourceID: zego_call');
       final result = await ZegoUIKitPrebuiltCallInvitationService().send(
         invitees: invitees,
         isVideoCall: isVideoCall,
@@ -158,7 +187,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // If invitation failed (likely user is offline), update alert status
       if (!result) {
         for (var entry in alertIds.entries) {
-          await UserService.updateCallAlertStatus(entry.key, entry.value, 'offline');
+          await UserService.updateCallAlertStatus(
+              entry.key, entry.value, 'offline');
         }
       }
 
@@ -212,7 +242,11 @@ class _HomeScreenState extends State<HomeScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+                colors: [
+                  Color(0xFF1a1a2e),
+                  Color(0xFF16213e),
+                  Color(0xFF0f3460)
+                ],
               ),
             ),
             child: SafeArea(
@@ -225,15 +259,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         CircleAvatar(
                           radius: 50,
-                          backgroundColor: const Color(0xFF6C63FF).withOpacity(0.1),
-                          backgroundImage: photoURL != null ? NetworkImage(photoURL) : null,
+                          backgroundColor:
+                              const Color(0xFF6C63FF).withValues(alpha: 0.1),
+                          backgroundImage:
+                              photoURL != null ? NetworkImage(photoURL) : null,
                           child: photoURL == null
-                              ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 32, color: Color(0xFF6C63FF), fontWeight: FontWeight.bold))
+                              ? Text(
+                                  name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                  style: const TextStyle(
+                                      fontSize: 32,
+                                      color: Color(0xFF6C63FF),
+                                      fontWeight: FontWeight.bold))
                               : null,
                         ),
                         const SizedBox(height: 16),
-                        Text(name, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                        Text(email, style: const TextStyle(color: Colors.white54, fontSize: 14)),
+                        Text(name,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold)),
+                        Text(email,
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 14)),
                       ],
                     ),
                   ),
@@ -249,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6C63FF).withOpacity(0.3),
+                          color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -260,18 +307,30 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Current Balance', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                            Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
+                            Text('Current Balance',
+                                style: TextStyle(
+                                    color: Colors.white70, fontSize: 14)),
+                            Icon(Icons.account_balance_wallet_rounded,
+                                color: Colors.white, size: 20),
                           ],
                         ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            const Icon(Icons.monetization_on_rounded, color: Colors.amber, size: 32),
+                            const Icon(Icons.monetization_on_rounded,
+                                color: Colors.amber, size: 32),
                             const SizedBox(width: 12),
-                            Text('$coins', style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                            Text('$coins',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold)),
                             const SizedBox(width: 8),
-                            const Text('Coins', style: TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.w500)),
+                            const Text('Coins',
+                                style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500)),
                           ],
                         ),
                       ],
@@ -280,7 +339,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 40),
 
                   // Coin Packages
-                  const Text('Get More Coins', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Get More Coins',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   _buildCoinPackage(
                     coins: 100,
@@ -310,14 +373,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 32),
 
                   // Background Call Setup
-                  const Text('System Settings', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('System Settings',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1)),
                     ),
                     child: Column(
                       children: [
@@ -329,13 +397,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            onPressed: () => PermissionService.requestAllPermissions(),
+                            onPressed: () =>
+                                PermissionService.requestAllPermissions(),
                             icon: const Icon(Icons.settings_suggest_rounded),
                             label: const Text('Enable Background Calls'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white12,
                               foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),
@@ -376,7 +446,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1a1a2e),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
+        border: Border(
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
       ),
       child: SafeArea(
         child: SizedBox(
@@ -415,8 +486,9 @@ class _HomeScreenState extends State<HomeScreen> {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color:
-                    isSelected ? color.withOpacity(0.15) : Colors.transparent,
+                color: isSelected
+                    ? color.withValues(alpha: 0.15)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -437,7 +509,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPermissionBanner() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.amber.withOpacity(0.9),
+      color: Colors.amber.withValues(alpha: 0.9),
       child: Row(
         children: [
           const Icon(Icons.warning_amber_rounded, color: Colors.black87),
@@ -445,7 +517,10 @@ class _HomeScreenState extends State<HomeScreen> {
           const Expanded(
             child: Text(
               'Permissions required for background calls',
-              style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.black87,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold),
             ),
           ),
           TextButton(
@@ -454,7 +529,8 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: Colors.black87,
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
-            child: const Text('Grant All', style: TextStyle(color: Colors.white, fontSize: 12)),
+            child: const Text('Grant All',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
           ),
         ],
       ),
@@ -462,7 +538,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader() {
-    final user = widget.user;
     final genderLabel = widget.myGender == 'male' ? '♂ Male' : '♀ Female';
     String showingLabel = '';
     Color showingColor = const Color(0xFF6C63FF);
@@ -478,75 +553,85 @@ class _HomeScreenState extends State<HomeScreen> {
       showingColor = const Color(0xFF00C9A7);
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        border:
-            Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundImage:
-                user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-            backgroundColor: const Color(0xFF6C63FF),
-            child: user.photoURL == null
-                ? Text(
-                    (user.displayName != null && user.displayName!.isNotEmpty) ? user.displayName![0].toUpperCase() : 'U',
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
-                  )
-                : null,
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: UserService.userStream(widget.user),
+      builder: (context, snapshot) {
+        final profile = snapshot.data;
+        final photoURL = profile?['photoURL'] ?? widget.user.photoURL;
+        final displayName = profile?['name'] ?? widget.user.displayName ?? 'User';
+        final nameToShow = (displayName.trim().isEmpty) ? 'User' : displayName;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            border: Border(
+                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundImage:
+                    photoURL != null && photoURL.isNotEmpty ? NetworkImage(photoURL) : null,
+                backgroundColor: const Color(0xFF6C63FF),
+                child: photoURL == null || photoURL.isEmpty
+                    ? Text(
+                        nameToShow.isNotEmpty ? nameToShow[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.displayName ?? 'User',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(genderLabel,
+                    Row(
+                      children: [
+                        Text(
+                          nameToShow,
                           style: const TextStyle(
-                              color: Colors.white70, fontSize: 11)),
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(genderLabel,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 11)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      showingLabel,
+                      style: TextStyle(color: showingColor, fontSize: 12),
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                  Text(
-                    showingLabel,
-                    style: TextStyle(color: showingColor, fontSize: 12),
-                  ),
-                ],
               ),
-            ),
-            // Interest Selector
-            _buildInterestSelector(showingColor),
-            // My ID button
-          IconButton(
-            onPressed: _showMyIdDialog,
-            icon: const Icon(Icons.badge_rounded,
-                color: Color(0xFF6C63FF), size: 24),
-            tooltip: 'My ID',
+              // Interest Selector
+              _buildInterestSelector(showingColor),
+              // My ID button
+              IconButton(
+                onPressed: _showMyIdDialog,
+                icon: const Icon(Icons.badge_rounded,
+                    color: Color(0xFF6C63FF), size: 24),
+                tooltip: 'My ID',
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -555,9 +640,9 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.07),
+          color: Colors.white.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withOpacity(0.12)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         ),
         child: TextField(
           controller: _searchController,
@@ -598,8 +683,14 @@ class _HomeScreenState extends State<HomeScreen> {
           return _buildEmptyState();
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+        return GridView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            childAspectRatio: 0.72,
+          ),
           itemCount: profiles.length,
           itemBuilder: (context, index) {
             final profile = profiles[index];
@@ -640,13 +731,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyState() {
-    final label = _preference == 'both' ? 'users' : (_preference == 'female' ? 'female' : 'male');
+    final label = _preference == 'both'
+        ? 'users'
+        : (_preference == 'female' ? 'female' : 'male');
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            _preference == 'both' ? '👥' : (_preference == 'female' ? '👩' : '👨'),
+            _preference == 'both'
+                ? '👥'
+                : (_preference == 'female' ? '👩' : '👨'),
             style: const TextStyle(fontSize: 64),
           ),
           const SizedBox(height: 16),
@@ -676,15 +771,20 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isBestValue ? const Color(0xFF6C63FF) : Colors.white.withOpacity(0.1)),
+        border: Border.all(
+            color: isBestValue
+                ? const Color(0xFF6C63FF)
+                : Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12)),
             child: Text(icon, style: const TextStyle(fontSize: 24)),
           ),
           const SizedBox(width: 16),
@@ -692,18 +792,29 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$coins Coins', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('$coins Coins',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
                 if (isBestValue)
-                  const Text('Best Value', style: TextStyle(color: Color(0xFF6C63FF), fontSize: 12, fontWeight: FontWeight.bold)),
+                  const Text('Best Value',
+                      style: TextStyle(
+                          color: Color(0xFF6C63FF),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
               ],
             ),
           ),
           ElevatedButton(
             onPressed: () => _buyCoins(coins, price),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isBestValue ? const Color(0xFF6C63FF) : Colors.white.withOpacity(0.1),
+              backgroundColor: isBestValue
+                  ? const Color(0xFF6C63FF)
+                  : Colors.white.withValues(alpha: 0.1),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               elevation: 0,
             ),
             child: Text(price),
@@ -718,10 +829,15 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2E),
-        title: const Text('Confirm Purchase', style: TextStyle(color: Colors.white)),
-        content: Text('Do you want to buy $amount coins for $price?', style: const TextStyle(color: Colors.white70)),
+        title: const Text('Confirm Purchase',
+            style: TextStyle(color: Colors.white)),
+        content: Text('Do you want to buy $amount coins for $price?',
+            style: const TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel',
+                  style: TextStyle(color: Colors.white54))),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -729,7 +845,8 @@ class _HomeScreenState extends State<HomeScreen> {
               await UserService.addCoins(widget.user, amount);
               _showSnack('Successfully added $amount coins!', isError: false);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF)),
             child: const Text('Buy Now'),
           ),
         ],
@@ -781,18 +898,28 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isOffline ? Colors.redAccent.withOpacity(0.05) : Colors.white.withOpacity(0.05),
+          color: isOffline
+              ? Colors.redAccent.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isOffline ? Colors.redAccent.withOpacity(0.2) : Colors.white.withOpacity(0.08)),
+          border: Border.all(
+              color: isOffline
+                  ? Colors.redAccent.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.08)),
         ),
         child: Row(
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundImage: (photoURL != null && photoURL.isNotEmpty) ? NetworkImage(photoURL) : null,
-              backgroundColor: const Color(0xFF6C63FF).withOpacity(0.1),
+              backgroundImage: (photoURL != null && photoURL.isNotEmpty)
+                  ? NetworkImage(photoURL)
+                  : null,
+              backgroundColor: const Color(0xFF6C63FF).withValues(alpha: 0.1),
               child: (photoURL == null || photoURL.isEmpty)
-                  ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', style: const TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.bold))
+                  ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                      style: const TextStyle(
+                          color: Color(0xFF6C63FF),
+                          fontWeight: FontWeight.bold))
                   : null,
             ),
             const SizedBox(width: 12),
@@ -802,13 +929,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(name, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                      Text(name,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold)),
                       if (isOffline) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(4)),
-                          child: const Text('OFFLINE', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                              color: Colors.redAccent,
+                              borderRadius: BorderRadius.circular(4)),
+                          child: const Text('OFFLINE',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ],
@@ -816,21 +954,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(isVideo ? Icons.videocam_rounded : Icons.call_rounded, color: isOffline ? Colors.redAccent.withOpacity(0.5) : Colors.white38, size: 14),
+                      Icon(
+                          isVideo ? Icons.videocam_rounded : Icons.call_rounded,
+                          color: isOffline
+                              ? Colors.redAccent.withValues(alpha: 0.5)
+                              : Colors.white38,
+                          size: 14),
                       const SizedBox(width: 4),
-                      Text(isVideo ? 'Video call' : 'Voice call', style: TextStyle(color: isOffline ? Colors.redAccent.withOpacity(0.5) : Colors.white38, fontSize: 12)),
+                      Text(isVideo ? 'Video call' : 'Voice call',
+                          style: TextStyle(
+                              color: isOffline
+                                  ? Colors.redAccent.withValues(alpha: 0.5)
+                                  : Colors.white38,
+                              fontSize: 12)),
                       const SizedBox(width: 8),
-                      const Text('•', style: TextStyle(color: Colors.white24, fontSize: 12)),
+                      const Text('•',
+                          style:
+                              TextStyle(color: Colors.white24, fontSize: 12)),
                       const SizedBox(width: 8),
-                      Text(timeStr, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                      Text(timeStr,
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 12)),
                     ],
                   ),
                 ],
               ),
             ),
             IconButton(
-              onPressed: () => UserService.deleteCallAlert(widget.user.uid, alert['id']),
-              icon: const Icon(Icons.delete_outline_rounded, color: Colors.white24, size: 20),
+              onPressed: () =>
+                  UserService.deleteCallAlert(widget.user.uid, alert['id']),
+              icon: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.white24, size: 20),
             ),
             IconButton(
               onPressed: () {
@@ -843,8 +997,16 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               icon: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: (isOffline ? Colors.redAccent : const Color(0xFF6C63FF)).withOpacity(0.15), shape: BoxShape.circle),
-                child: Icon(isVideo ? Icons.videocam_rounded : Icons.call_rounded, color: isOffline ? Colors.redAccent : const Color(0xFF6C63FF), size: 18),
+                decoration: BoxDecoration(
+                    color:
+                        (isOffline ? Colors.redAccent : const Color(0xFF6C63FF))
+                            .withValues(alpha: 0.15),
+                    shape: BoxShape.circle),
+                child: Icon(
+                    isVideo ? Icons.videocam_rounded : Icons.call_rounded,
+                    color:
+                        isOffline ? Colors.redAccent : const Color(0xFF6C63FF),
+                    size: 18),
               ),
             ),
           ],
@@ -888,13 +1050,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  PopupMenuItem<String> _buildInterestItem(String value, String label, Color color) {
+  PopupMenuItem<String> _buildInterestItem(
+      String value, String label, Color color) {
     final isSelected = _currentInterest == value;
     return PopupMenuItem<String>(
       value: value,
       child: Row(
         children: [
-          Text(label, style: TextStyle(color: isSelected ? color : Colors.white70, fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+          Text(label,
+              style: TextStyle(
+                  color: isSelected ? color : Colors.white70,
+                  fontSize: 14,
+                  fontWeight:
+                      isSelected ? FontWeight.bold : FontWeight.normal)),
           if (isSelected) ...[
             const Spacer(),
             Icon(Icons.check_circle_rounded, color: color, size: 16),
@@ -924,7 +1092,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
+                color: Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: SelectableText(
@@ -991,155 +1159,180 @@ class _ProfileCard extends StatelessWidget {
     final genderColor =
         gender == 'female' ? const Color(0xFFE91E8C) : const Color(0xFF4F8EF7);
     final genderIcon = gender == 'female' ? '♀' : '♂';
+    final enabled = !isCallingAny && isZegoReady;
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.09)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundImage: (photoURL != null && photoURL.isNotEmpty)
-                    ? NetworkImage(photoURL)
-                    : null,
-                backgroundColor: genderColor.withOpacity(0.3),
-                child: (photoURL == null || photoURL.isEmpty)
-                    ? Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                        style: TextStyle(
-                            color: genderColor,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold),
-                      )
-                    : null,
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: genderColor,
-                    shape: BoxShape.circle,
-                    border:
-                        Border.all(color: const Color(0xFF1a1a2e), width: 2),
-                  ),
-                  child: Center(
-                    child: Text(genderIcon,
-                        style:
-                            const TextStyle(fontSize: 10, color: Colors.white)),
-                  ),
-                ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          const SizedBox(width: 14),
-          // Name + ID
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                GestureDetector(
-                  onTap: onCopyId,
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          profile['uid'] ?? '',
-                          style: const TextStyle(
-                              color: Color(0xFF888888),
-                              fontSize: 10,
-                              fontFamily: 'monospace'),
-                          overflow: TextOverflow.ellipsis,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 1. Background Image
+              (photoURL != null && photoURL.isNotEmpty)
+                  ? Image.network(
+                      photoURL,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: genderColor.withValues(alpha: 0.2),
+                        child: Center(
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                            style: TextStyle(
+                                color: genderColor,
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.copy_rounded,
-                          color: Color(0xFF555555), size: 12),
-                    ],
+                    )
+                  : Container(
+                      color: genderColor.withValues(alpha: 0.2),
+                      child: Center(
+                        child: Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                          style: TextStyle(
+                              color: genderColor,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+
+              // 2. Dark Gradient Overlay at the bottom for readability
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.black.withValues(alpha: 0.8),
+                      ],
+                      stops: const [0.4, 0.7, 1.0],
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Call buttons
-          Column(
-            children: [
-              _MiniCallBtn(
-                icon: Icons.videocam_rounded,
-                color: const Color(0xFF6C63FF),
-                onTap: (isCallingAny || !isZegoReady) ? null : onVideoCall,
               ),
-              const SizedBox(height: 8),
-              _MiniCallBtn(
-                icon: Icons.call_rounded,
-                color: const Color(0xFF00C9A7),
-                onTap: (isCallingAny || !isZegoReady) ? null : onVoiceCall,
+
+              // 3. Gender Icon Badge (Top Right)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: genderColor.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      genderIcon,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 4. Details Column (Bottom overlay)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    // Action Buttons Row
+                    Row(
+                      children: [
+                        // Voice Call Button
+                        Expanded(
+                          child: InkWell(
+                            onTap: enabled ? onVoiceCall : null,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              decoration: BoxDecoration(
+                                color: enabled
+                                    ? const Color(0xFF00C9A7).withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: enabled
+                                        ? const Color(0xFF00C9A7).withValues(alpha: 0.4)
+                                        : Colors.white12),
+                              ),
+                              child: Icon(
+                                Icons.call_rounded,
+                                color: enabled ? const Color(0xFF00C9A7) : Colors.white24,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Video Call Button
+                        Expanded(
+                          child: InkWell(
+                            onTap: enabled ? onVideoCall : null,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              decoration: BoxDecoration(
+                                color: enabled
+                                    ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: enabled
+                                        ? const Color(0xFF6C63FF).withValues(alpha: 0.4)
+                                        : Colors.white12),
+                              ),
+                              child: Icon(
+                                Icons.videocam_rounded,
+                                color: enabled ? const Color(0xFF6C63FF) : Colors.white24,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ],
-      ),
-    ));
-  }
-}
-
-class _MiniCallBtn extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback? onTap;
-
-  const _MiniCallBtn(
-      {required this.icon, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color:
-              enabled ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: enabled ? color.withOpacity(0.5) : Colors.white12),
-        ),
-        child: Icon(
-          icon,
-          color: enabled ? color : Colors.white24,
-          size: 20,
         ),
       ),
     );

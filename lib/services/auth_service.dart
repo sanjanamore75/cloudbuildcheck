@@ -1,9 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:chating/services/zego_service.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -13,9 +11,11 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
 
-  Future<User?> signInWithEmailAndPassword(String email, String password) async {
+  Future<User?> signInWithEmailAndPassword(
+      String email, String password) async {
     try {
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -26,9 +26,11 @@ class AuthService {
     }
   }
 
-  Future<User?> registerWithEmailAndPassword(String email, String password) async {
+  Future<User?> registerWithEmailAndPassword(
+      String email, String password) async {
     try {
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -64,7 +66,7 @@ class AuthService {
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('spoofed_uid');
-    
+
     ZegoService().uninit();
     await _googleSignIn.signOut();
     await _auth.signOut();
@@ -76,7 +78,9 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       String? savedUid = prefs.getString('device_user_uid');
 
-      if (savedUid != null && _auth.currentUser != null && _auth.currentUser!.uid == savedUid) {
+      if (savedUid != null &&
+          _auth.currentUser != null &&
+          _auth.currentUser!.uid == savedUid) {
         return _auth.currentUser;
       }
 

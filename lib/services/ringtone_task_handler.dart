@@ -23,7 +23,7 @@ class RingtoneTaskHandler extends TaskHandler {
     print('🔔 RingtoneTaskHandler: starting ringtone');
     // Configure audio context to play loudly as a ringtone and keep device awake
     await _player.setAudioContext(AudioContext(
-      android: AudioContextAndroid(
+      android: const AudioContextAndroid(
         isSpeakerphoneOn: true,
         stayAwake: true,
         contentType: AndroidContentType.music,
@@ -32,7 +32,7 @@ class RingtoneTaskHandler extends TaskHandler {
       ),
       iOS: AudioContextIOS(
         category: AVAudioSessionCategory.playback,
-        options: {
+        options: const {
           AVAudioSessionOptions.defaultToSpeaker,
           AVAudioSessionOptions.mixWithOthers,
         },
@@ -49,7 +49,10 @@ class RingtoneTaskHandler extends TaskHandler {
       bool? hasCustomSupport = await Vibration.hasCustomVibrationsSupport();
       if (hasCustomSupport == true) {
         // Wait 0ms, vibrate 1000ms, wait 1000ms, vibrate 1000ms, etc.
-        Vibration.vibrate(pattern: [0, 1000, 1000, 1000], intensities: [0, 255, 0, 255], repeat: 1);
+        Vibration.vibrate(
+            pattern: [0, 1000, 1000, 1000],
+            intensities: [0, 255, 0, 255],
+            repeat: 1);
       } else {
         // Fallback for iOS / devices without custom patterns
         Vibration.vibrate();

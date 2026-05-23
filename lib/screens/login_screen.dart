@@ -85,7 +85,8 @@ class _LoginScreenState extends State<LoginScreen>
         builder: (context, setDialogState) {
           return AlertDialog(
             backgroundColor: const Color(0xFF1E1E2E),
-            title: const Text('Login to Account', style: TextStyle(color: Colors.white)),
+            title: const Text('Login to Account',
+                style: TextStyle(color: Colors.white)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -96,8 +97,9 @@ class _LoginScreenState extends State<LoginScreen>
                     labelText: 'Account UID',
                     labelStyle: const TextStyle(color: Colors.white54),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -109,8 +111,9 @@ class _LoginScreenState extends State<LoginScreen>
                     labelText: 'Password',
                     labelStyle: const TextStyle(color: Colors.white54),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
@@ -118,7 +121,8 @@ class _LoginScreenState extends State<LoginScreen>
             actions: [
               TextButton(
                 onPressed: dialogLoading ? null : () => Navigator.pop(context),
-                child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                child: const Text('Cancel',
+                    style: TextStyle(color: Colors.white54)),
               ),
               ElevatedButton(
                 onPressed: dialogLoading
@@ -140,16 +144,22 @@ class _LoginScreenState extends State<LoginScreen>
                         setDialogState(() => dialogLoading = true);
 
                         try {
-                          final mockUser = AppUser(uid: uid, displayName: 'User', email: 'admin_seed@example.com');
-                          final profile = await UserService.getUserData(mockUser);
+                          final mockUser = AppUser(
+                              uid: uid,
+                              displayName: 'User',
+                              email: 'admin_seed@example.com');
+                          final profile =
+                              await UserService.getUserData(mockUser);
 
-                          if (profile == null || (profile['isSeed'] != true && profile['isSeed'] != 'true')) {
+                          if (profile == null ||
+                              (profile['isSeed'] != true &&
+                                  profile['isSeed'] != 'true')) {
                             _showSnack('Invalid Account UID');
                             setDialogState(() => dialogLoading = false);
                             return;
                           }
 
-                          // Valid seed profile! 
+                          // Valid seed profile!
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setString('spoofed_uid', uid);
 
@@ -164,10 +174,16 @@ class _LoginScreenState extends State<LoginScreen>
                           setDialogState(() => dialogLoading = false);
                         }
                       },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF)),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF)),
                 child: dialogLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Login', style: TextStyle(color: Colors.white)),
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : const Text('Login',
+                        style: TextStyle(color: Colors.white)),
               ),
             ],
           );
@@ -209,7 +225,8 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF6C63FF).withOpacity(0.5),
+                              color: const Color(0xFF6C63FF)
+                                  .withValues(alpha: 0.5),
                               blurRadius: 30,
                               spreadRadius: 5,
                             ),
@@ -247,7 +264,8 @@ class _LoginScreenState extends State<LoginScreen>
 
                       // Login Buttons
                       if (_isLoading)
-                        const CircularProgressIndicator(color: Color(0xFF6C63FF))
+                        const CircularProgressIndicator(
+                            color: Color(0xFF6C63FF))
                       else ...[
                         // Device Login Button
                         _buildLoginButton(
@@ -306,14 +324,20 @@ class _LoginScreenState extends State<LoginScreen>
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? const Color(0xFF6C63FF) : Colors.white.withOpacity(0.05),
+          backgroundColor: isPrimary
+              ? const Color(0xFF6C63FF)
+              : Colors.white.withValues(alpha: 0.05),
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: isPrimary ? BorderSide.none : BorderSide(color: Colors.white.withOpacity(0.1)),
+            side: isPrimary
+                ? BorderSide.none
+                : BorderSide(color: Colors.white.withValues(alpha: 0.1)),
           ),
           elevation: isPrimary ? 8 : 0,
-          shadowColor: isPrimary ? const Color(0xFF6C63FF).withOpacity(0.4) : Colors.transparent,
+          shadowColor: isPrimary
+              ? const Color(0xFF6C63FF).withValues(alpha: 0.4)
+              : Colors.transparent,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -340,9 +364,9 @@ class _LoginScreenState extends State<LoginScreen>
         width: double.infinity,
         height: 60,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -41,8 +41,7 @@ class MessagesScreen extends StatelessWidget {
                           fontWeight: FontWeight.bold)),
                   SizedBox(height: 4),
                   Text('Your conversations',
-                      style:
-                          TextStyle(color: Colors.white54, fontSize: 14)),
+                      style: TextStyle(color: Colors.white54, fontSize: 14)),
                 ],
               ),
             ),
@@ -66,7 +65,7 @@ class MessagesScreen extends StatelessWidget {
                         children: [
                           Icon(Icons.chat_bubble_outline_rounded,
                               size: 90,
-                              color: Colors.white.withOpacity(0.08)),
+                              color: Colors.white.withValues(alpha: 0.08)),
                           const SizedBox(height: 20),
                           const Text('No conversations yet',
                               style: TextStyle(
@@ -77,8 +76,8 @@ class MessagesScreen extends StatelessWidget {
                           const Text(
                             'Tap any profile on the Profiles tab\nto start a conversation.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: Colors.white24, fontSize: 13),
+                            style:
+                                TextStyle(color: Colors.white24, fontSize: 13),
                           ),
                         ],
                       ),
@@ -86,11 +85,10 @@ class MessagesScreen extends StatelessWidget {
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     itemCount: convs.length,
-                    itemBuilder: (context, i) =>
-                        _ConversationTile(
+                    itemBuilder: (context, i) => _ConversationTile(
                       conv: convs[i],
                       currentUser: currentUser,
                       onCallUser: onCallUser,
@@ -110,8 +108,8 @@ class MessagesScreen extends StatelessWidget {
 class _ConversationTile extends StatelessWidget {
   final Map<String, dynamic> conv;
   final AppUser currentUser;
-  final Future<void> Function(Map<String, dynamic>,
-      {required bool isVideoCall}) onCallUser;
+  final Future<void> Function(Map<String, dynamic>, {required bool isVideoCall})
+      onCallUser;
 
   const _ConversationTile({
     required this.conv,
@@ -122,8 +120,11 @@ class _ConversationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCall = conv.containsKey('callerId');
-    final name = isCall ? (conv['callerName'] ?? 'User') : (conv['name'] ?? 'User');
-    final photo = isCall ? (conv['callerPhoto'] as String?) : (conv['photoURL'] as String?);
+    final name =
+        isCall ? (conv['callerName'] ?? 'User') : (conv['name'] ?? 'User');
+    final photo = isCall
+        ? (conv['callerPhoto'] as String?)
+        : (conv['photoURL'] as String?);
     final lastMsg = isCall ? '' : (conv['lastMessage'] ?? '');
     final timestamp = (conv['lastActivity'] ?? conv['timestamp']) as int? ?? 0;
     final timeStr = _formatTime(timestamp);
@@ -166,9 +167,11 @@ class _ConversationTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isCall ? Colors.white.withOpacity(0.03) : Colors.white.withOpacity(0.05),
+          color: isCall
+              ? Colors.white.withValues(alpha: 0.03)
+              : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
         child: Row(
           children: [
@@ -177,12 +180,11 @@ class _ConversationTile extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundImage:
-                      (photo != null && photo.isNotEmpty)
-                          ? NetworkImage(photo)
-                          : null,
+                  backgroundImage: (photo != null && photo.isNotEmpty)
+                      ? NetworkImage(photo)
+                      : null,
                   backgroundColor:
-                      const Color(0xFF6C63FF).withOpacity(0.2),
+                      const Color(0xFF6C63FF).withValues(alpha: 0.2),
                   child: (photo == null || photo.isEmpty)
                       ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'U',
                           style: const TextStyle(
@@ -226,13 +228,17 @@ class _ConversationTile extends StatelessWidget {
                         Icon(
                           isVideo ? Icons.videocam_rounded : Icons.call_rounded,
                           size: 14,
-                          color: status == 'missed' ? Colors.redAccent : Colors.white38,
+                          color: status == 'missed'
+                              ? Colors.redAccent
+                              : Colors.white38,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '${status?.toUpperCase() ?? 'CALL'}',
+                          status?.toUpperCase() ?? 'CALL',
                           style: TextStyle(
-                            color: status == 'missed' ? Colors.redAccent : Colors.white38,
+                            color: status == 'missed'
+                                ? Colors.redAccent
+                                : Colors.white38,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -245,9 +251,8 @@ class _ConversationTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          color: lastMsg.isEmpty
-                              ? Colors.white24
-                              : Colors.white54,
+                          color:
+                              lastMsg.isEmpty ? Colors.white24 : Colors.white54,
                           fontSize: 13,
                           fontStyle: lastMsg.isEmpty
                               ? FontStyle.italic
@@ -262,23 +267,39 @@ class _ConversationTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(timeStr,
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 11)),
+                    style:
+                        const TextStyle(color: Colors.white38, fontSize: 11)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     _SmallCallBtn(
                       icon: Icons.call_rounded,
                       color: const Color(0xFF00C9A7),
-                      onTap: () =>
-                          onCallUser(conv, isVideoCall: false),
+                      onTap: () {
+                        final targetProfile = isCall
+                            ? {
+                                'uid': conv['callerId'],
+                                'name': name,
+                                'photoURL': photo,
+                              }
+                            : conv;
+                        onCallUser(targetProfile, isVideoCall: false);
+                      },
                     ),
                     const SizedBox(width: 6),
                     _SmallCallBtn(
                       icon: Icons.videocam_rounded,
                       color: const Color(0xFF6C63FF),
-                      onTap: () =>
-                          onCallUser(conv, isVideoCall: true),
+                      onTap: () {
+                        final targetProfile = isCall
+                            ? {
+                                'uid': conv['callerId'],
+                                'name': name,
+                                'photoURL': photo,
+                              }
+                            : conv;
+                        onCallUser(targetProfile, isVideoCall: true);
+                      },
                     ),
                   ],
                 ),
@@ -318,9 +339,9 @@ class _SmallCallBtn extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
         child: Icon(icon, color: color, size: 16),
       ),
